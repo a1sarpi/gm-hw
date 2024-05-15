@@ -1254,7 +1254,7 @@ const Data = {
         const N = this.controlsParameters.N;
         const M = this.controlsParameters.M;
         const n = N_ctr - 1;
-        const m = M_ctr - 1;
+        const m = M_ctr;
 
         let u_dist = new Array(N_ctr - 1);
         for (i = 0; i < N_ctr-1; i++) {
@@ -1263,7 +1263,7 @@ const Data = {
 
         let v_dist = new Array(N_ctr);
         for (i = 0; i < N_ctr; i++) {
-            v_dist[i] = new Array(M_ctr - 1);
+            v_dist[i] = new Array(M_ctr);
         }
 
         for (i = 0; i < N_ctr - 1; i++) {
@@ -1284,18 +1284,33 @@ const Data = {
         }
 
         for (i = 0; i < N_ctr; i++) {
-            for (j = 0; j < M_ctr - 1; j++) {
-                if (this.controlsParameters.paramCoords == "chordal") {
-                    v_dist[i][j] = Math.hypot(
-                        this.pointsCtr[i][j + 1].x - this.pointsCtr[i][j].x,
-                        this.pointsCtr[i][j + 1].y - this.pointsCtr[i][j].y,
-                        this.pointsCtr[i][j + 1].z - this.pointsCtr[i][j].z);
-                }
-                if (this.controlsParameters.paramCoords == "centripetal") {
-                    v_dist[i][j] = Math.sqrt(Math.hypot(
-                        this.pointsCtr[i][j + 1].x - this.pointsCtr[i][j].x,
-                        this.pointsCtr[i][j + 1].y - this.pointsCtr[i][j].y,
-                        this.pointsCtr[i][j + 1].z - this.pointsCtr[i][j].z));
+            for (j = 0; j < M_ctr; j++) {
+                if(j != M_ctr - 1) {
+                    if (this.controlsParameters.paramCoords == "chordal") {
+                        v_dist[i][j] = Math.hypot(
+                            this.pointsCtr[i][j + 1].x - this.pointsCtr[i][j].x,
+                            this.pointsCtr[i][j + 1].y - this.pointsCtr[i][j].y,
+                            this.pointsCtr[i][j + 1].z - this.pointsCtr[i][j].z);
+                    }
+                    if (this.controlsParameters.paramCoords == "centripetal") {
+                        v_dist[i][j] = Math.sqrt(Math.hypot(
+                            this.pointsCtr[i][j + 1].x - this.pointsCtr[i][j].x,
+                            this.pointsCtr[i][j + 1].y - this.pointsCtr[i][j].y,
+                            this.pointsCtr[i][j + 1].z - this.pointsCtr[i][j].z));
+                    }
+                } else {
+                    if (this.controlsParameters.paramCoords == "chordal") {
+                        v_dist[i][j] = Math.hypot(
+                            this.pointsCtr[i][0].x - this.pointsCtr[i][j].x,
+                            this.pointsCtr[i][0].y - this.pointsCtr[i][j].y,
+                            this.pointsCtr[i][0].z - this.pointsCtr[i][j].z);
+                    }
+                    if (this.controlsParameters.paramCoords == "centripetal") {
+                        v_dist[i][j] = Math.sqrt(Math.hypot(
+                            this.pointsCtr[i][0].x - this.pointsCtr[i][j].x,
+                            this.pointsCtr[i][0].y - this.pointsCtr[i][j].y,
+                            this.pointsCtr[i][0].z - this.pointsCtr[i][j].z));
+                    }
                 }
             }
         }
@@ -1311,7 +1326,7 @@ const Data = {
             u_sum[i] = s / M_ctr;
         }
 
-        for (j = 0; j < M_ctr - 1; j++) {
+        for (j = 0; j < M_ctr; j++) {
             let s = 0;
             for (i = 0; i < N_ctr; i++) {
                     s += v_dist[i][j];
@@ -1323,7 +1338,7 @@ const Data = {
         for (i = 0; i < N_ctr - 1; i++) {
             u_all+=u_sum[i]
         }
-        for (j = 0; j < M_ctr - 1; j++) {
+        for (j = 0; j < M_ctr; j++) {
             v_all+=v_sum[j]
         }
 
@@ -1369,8 +1384,10 @@ const Data = {
 
         let ii = 0, jj, omega, xi, u, v;
 
-        const du = (this.pointsCtr[n][0].u - this.pointsCtr[0][0].u) / (N - 1);
-        const dv = (this.pointsCtr[0][m].v - this.pointsCtr[0][0].v) / (M - 1);
+        //const du = (this.pointsCtr[n][0].u - this.pointsCtr[0][0].u) / (N - 1);
+        //const dv = (this.pointsCtr[0][m].v - this.pointsCtr[0][0].v) / (M - 1);
+        const du = 1. / (N-1);
+        const dv = 1. / (M-1);
 
         this.pointsSpline = new Array(N);
         this.normalsSpline = new Array(N);
@@ -1384,7 +1401,7 @@ const Data = {
         for (i = 0; i < N; i++)
         {
             let u = i * du;
-            while ((u > this.pointsCtr[ii + 1][0].u) && (ii + 1 < N_ctr-1))
+            while ((u > this.pointsCtr[ii + 1][0].u) && (ii + 1 < n))
                 ii++;
             let omega = (u - this.pointsCtr[ii][0].u) /
                 (this.pointsCtr[ii+1][0].u - this.pointsCtr[ii][0].u);
@@ -1393,10 +1410,11 @@ const Data = {
         	for (j = 0; j < M; j++)
         	{
                 let v = j * dv;
-                while ((v > this.pointsCtr[0][jj + 1].v) && (jj + 1 < M_ctr-1))
+                while ((v > (jj == m ? 1 : this.pointsCtr[0][jj+1].v ) ) && (jj < m))
                     jj++;
                 let xi = (v - this.pointsCtr[0][jj].v) /
-                    (this.pointsCtr[0][jj+1].v - this.pointsCtr[0][jj].v);
+                    ( (jj == m ? 1 : this.pointsCtr[0][jj+1].v ) - this.pointsCtr[0][jj].v);
+
                 // CALCULATE SPLINE COORDINATES
                 const [x, y, z] = this.spline.calc_value(omega, xi, ii, jj);
 
