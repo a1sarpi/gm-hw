@@ -1,0 +1,379 @@
+\documentclass[12pt]{article}
+\usepackage{myHeadArt}
+\usepackage{mathrsfs}
+\renewcommand{\qedsymbol}{$\blacksquare$}
+
+\usepackage{float}
+\usepackage{listings}
+\usepackage{minted}
+\usepackage{xfrac}
+
+\usepackage{geometry}
+\geometry{verbose,a4paper,tmargin=1cm,bmargin=2cm,lmargin=1.5cm,rmargin=1.5cm}
+
+% \usepackage{svg}
+\usepackage{color}
+\definecolor{lightgray}{rgb}{.9,.9,.9}
+\definecolor{darkgray}{rgb}{.4,.4,.4}
+\definecolor{purple}{rgb}{0.65, 0.12, 0.82}
+
+\lstdefinelanguage{JavaScript}{
+  keywords={typeof, new, true, false, catch, function, return, null, catch, switch, var, if, in, while, do, else, case, break},
+  keywordstyle=\color{blue}\bfseries,
+  ndkeywords={class, export, boolean, throw, implements, import, this},
+  ndkeywordstyle=\color{darkgray}\bfseries,
+  identifierstyle=\color{black},
+  sensitive=false,
+  comment=[l]{//},
+  morecomment=[s]{/*}{*/},
+  commentstyle=\color{purple}\ttfamily,
+  stringstyle=\color{red}\ttfamily,
+  morestring=[b]',
+  morestring=[b]"
+}
+
+\lstset{
+   language=JavaScript,
+   backgroundcolor=\color{lightgray},
+   extendedchars=true,
+   basicstyle=\footnotesize\ttfamily,
+   showstringspaces=false,
+   showspaces=false,
+   numbers=left,
+   numberstyle=\footnotesize,
+   numbersep=9pt,
+   tabsize=2,
+   breaklines=true,
+   showtabs=false,
+   captionpos=b
+}
+
+
+\begin{document}
+\pagestyle{empty}
+\centerline{\large Министерство науки и высшего образования}  
+\centerline{\large Федеральное государственное бюджетное образовательное}
+\centerline{\large учреждение высшего образования}
+\centerline{\large ``Московский государственный технический университет}
+\centerline{\large имени Н.Э. Баумана}
+\centerline{\large (национальный исследовательский университет)''}
+\centerline{\large (МГТУ им. Н.Э. Баумана)}
+\hrule
+\vspace{0.5cm}
+\begin{figure}[h]
+\center
+\includegraphics[height=0.35\linewidth]{bmstu-logo.pdf}
+\end{figure}
+\begin{center}
+  \large  
+  \begin{tabular}{c}
+    Факультет ``Фундаментальные науки'' \\
+    Кафедра ``Математика и компьютерные науки (ФН11)''    
+  \end{tabular}
+\end{center}
+\vspace{0.5cm}
+\begin{center}
+  \LARGE \bf  
+  \begin{tabular}{c}
+    \textsc{Геометрическое моделирование} \\
+    Домашнее задание №1 \\
+  \end{tabular}
+\end{center}
+\vspace{0.5cm}
+\begin{center}
+  \large  
+  \begin{tabular}{c}
+    Клячко Вячеслав (ФН11-61Б) \\ % sasha
+    Вариант 8 \\ \\ % sasha: 9
+    Преподаватель: Захаров А.\,Н.
+  \end{tabular}
+\end{center}
+\vfill
+\begin{center}
+  \large  
+  \begin{tabular}{c}
+    Москва, 
+    2024 г.
+  \end{tabular}
+\end{center}
+\pagebreak
+
+
+
+\section*{Условие}
+Напишите программу построения естественного бикубического сплайна по контрольным
+точкам, лежащим на цилиндрической поверхности заданного радиуса. Используйте
+краевые условия третьего типа по угловой координате и 
+первого % sasha: пятого
+типа по параметрической координате вдоль оси цилиндра (для их задания используйте
+разностные аппроксимации). Используйте программу л. р. №2 (Примечание: в функции
+\texttt{generateControlPoints}, в которой генерируются координаты контрольных точек, используйте параметрические уравнения для цилиндрической поверхности заданного радиуса).
+
+\section*{Решение}
+\subsection*{Введение параметрических координат}
+Дана декартова система координат $ Oxyz $, радиус и $ x $-координаты двух
+оснований цилиндра: $ x_{\min} $ и $ x_{\max} $.
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.8\textwidth]{Figures/1bis.png}
+  \caption{}
+  \label{fig:1}
+\end{figure}
+Этих данных хватает для нахождения всех точек цилиндра. Найдём координаты
+некоторых из них, которые далее будем называть \emph{контрольными}. Для этого в функции \texttt{generateControlPoints}, взятой из
+л. р. №2, добавим цикл
+\begin{lstlisting}[caption=Создание контрольных точек по входным параметрам.]
+for (let i = 0; i < this.N_ctr; i++)
+    for (let j = 0; j < this.M_ctr; j++) {
+        const x = Xmin + i * (Xmax - Xmin) / (this.N_ctr - 1) - this.Xmid;
+        const y = Radius * Math.cos( 2 * j * Math.PI / (this.M_ctr) );
+        const z = -Radius * Math.sin( 2 * j * Math.PI / (this.M_ctr) );
+
+        this.add_coords(i, j, x, y, z);
+    }
+\end{lstlisting}
+
+Здесь неявно были введены стандартные для цилиндра параметрические координаты $
+\varphi$, $ h $. Число
+$ \varphi \in [0, 2\pi)$ соответствует углу, отсчитаемого от вертикальной оси $ Oy $, под которым находится
+проекция точки на основание; а $ h \in [0, x_{\max} - x_{\min}]$ есть
+расстояние до основания (на рисунке $ \ref{fig:1} $ расположенного слева). По циклу видно, что контрольные точки выбираются равномерно по каждой
+параметрической координате в пределах их изменения. Число \verb|N_ctr| контрольных точек вдоль оси
+цилиндра и число \verb|M_ctr| контрольных точек по сечению цилиндра задаётся
+пользователем с помощью ползунка.
+
+Итак, нами был получен набор декартовых координат контрольных точек (обозначим
+их $ p_{ij} $, где $ i $ соответствует координате $ h $, а $ j $ --- координате
+$ \varphi $), которые
+далее мы должны интерполировать с помощью естественного бикубического сплайна.
+Для начала введём другие параметрические координаты $ u ,  v \in [0, 1] $ тремя
+известными из второй лабораторной работы способами и найдём эти координаты для
+контрольных точек. Заметим, что при фиксированном индексе $ i $ все координаты
+$ v(p_{ij}) = v_i $ равны между собой, ровно как и координаты $ u(p_{ij}) = u_j $ при
+фиксированном индексе $ j $.
+
+
+\subsection*{Введение естественного бикубического сплайна}
+Для интерполяции воспользуемся формулой естественного бикубического сплайна 
+\[
+  S(u, v) = \sum_{k=0}^3\sum_{l=0}^3 a^{ij}_{kl} (u-u_j)^k(v - v_i)^l =
+  S_{ij}(u, v),
+\]
+справедливой внутри каждой ячейки $ \Omega_{ij} $, то есть при 
+\[
+  (u, v) \in \Omega_{ij} = \{(u,v) \mid u_j \leqslant u \leqslant u_{j+1}, \,
+    v_i \leqslant
+  v \leqslant v_{i+1}\}.
+\]
+Коэффициенты $ a^{ij}_{kl} $ неизвестны, и наша задача сводится к тому, чтобы их
+найти.
+
+Для удобства введём для каждой ячейки вспомогательные координаты $ \omega, \xi
+\in [0, 1]$,
+соответствующие прежним координатам $ u $, $ v $ с той разницей, что в данной
+ячейке они изменяются от нуля до единицы. Находясь в ячейке $ \Omega_{ij} $, это можно сделать, например, по
+формулам перехода
+\[
+  \omega = \frac{u - u_j}{u_{j+1} - u_j}, \qquad \xi = \frac{v - v_i}{v_{i+1} -
+  v_i}.
+\]
+Формула для сплайна (пусть и с известным образом изменёнными коэффициентами)
+тогда примет совсем простой вид
+\[
+  S(\omega, \xi) = \sum_{k=0}^3\sum_{l=0}^3 a^{ij}_{kl} \omega^k\xi^l.
+\]
+
+% Понятно, что (учитывая требование $ S \in C^{2,2}[\Omega] $) $ S(0, 0) = a^{ij}_{00} = p_{ij} $, только тогда сплайн
+% интерполяционный. 
+
+\subsection*{Составление СЛАУ}
+Запишем наши требования к сплайну.
+\begin{enumerate}
+  \setcounter{enumi}{-1}
+  \item Сплайн имет непрерывные частные и смешанные производные до второго
+    порядка включительно: $ S \in C^{2,2}[\Omega] $.
+  \item Для того чтобы сплайн был интерполяционным, необходимо выполнение
+    условий
+    \[
+      S_{ij}(0, 0) = a_{00}^{ij} = p_{ij}, \quad
+      S_{ij}(0, 1) = \sum_{l=0}^3 a_{0l}^{ij} = p_{i+1,j}, \quad
+      S_{ij}(1, 0) = \sum_{k=0}^3 a_{k0}^{ij} = p_{i, j+1}.
+    \]
+    % , $ S_{ij}(0, 1) = p_{i+1,j} $, $ S_{ij}(1,
+    % 0) = p_{i, j+1} $.
+  \item Для стыковки частных производных  
+  \begin{align*}
+    \frac{\partial S_{ij}}{\partial \omega}(\omega, \xi) &=
+    \sum_{k=1}^3\sum_{l=0}^3 k a_{kl}^{ij}\omega^{k-1}\xi^l,\\
+    \frac{\partial^2 S_{ij}}{\partial \omega^2}(\omega, \xi) &=
+    \sum_{k=2}^3\sum_{l=0}^3 k(k-1)a_{kl}^{ij}\omega^{k-2}\xi^l
+  \end{align*}
+  необходимо выполнение условий
+  \begin{align*}
+    \frac{\partial S_{ij}}{\partial \omega}(1, 0) &=  \frac{\partial S_{i, j+1}}{\partial
+    \omega}(0,0), & \text{то есть }\sum_{k=1}^3 ka^{ij}_{k0} &= a_{10}^{i,j+1},\\   
+    \frac{\partial^2 S_{ij}}{\partial \omega^2}(1, 0) &=  \frac{\partial^2 S_{i,
+    j+1}}{\partial
+      \omega^2}(0,0), & \text{то есть }\sum_{k=2}^3
+      k(k-1)a_{k0}^{ij} &= 2a^{i,j+1}_{20}.
+  \end{align*}
+\item Для стыковки частных производных  
+\begin{align*}
+  \frac{\partial S_{ij}}{\partial \xi}(\omega, \xi) &=
+  \sum_{k=0}^3\sum_{l=1}^3 l a_{kl}^{ij}\omega^{k}\xi^{l-1},\\
+  \frac{\partial^2 S_{ij}}{\partial \xi^2}(\omega, \xi) &=
+  \sum_{k=0}^3\sum_{l=2}^3 l(l-1) a_{kl}^{ij}\omega^{k}\xi^{l-2}
+%   \frac{\partial S_{ij}}{\partial \xi}(\omega, \xi) &= ,\\ 
+%   \frac{\partial^2 S_{ij}}{\partial \xi^2}(\omega, \xi) &= 
+\end{align*}
+необходимо выполнение условий
+  \begin{align*}
+    \frac{\partial S_{ij}}{\partial \xi}(0, 1) &= \frac{\partial S_{i+1, j}}{\partial
+    \xi}(0,0), & \text{то есть } \sum_{l=1}^3 l a_{0l}^{ij} &= a_{01}^{i, j+1},\\
+      \frac{\partial^2 S_{ij}}{\partial \xi^2}(0, 1) &= \frac{\partial^2 S_{i+1,
+    j}}{\partial
+        \xi^2}(0,0), & \text{то есть } \sum_{l=2}^3 l(l-1) a_{0l}^{ij} &=
+        2a_{02}^{i, j+1}.
+  \end{align*}
+\item Наконец, для стыковки смешанных производных 
+\[
+  \frac{\partial^2 S_{ij}}{\partial \omega \partial \xi} = \sum_{k=1}^3
+  \sum_{l=1}^3 kl a^{ij}_{kl}\omega^{k-1}\xi^{l-1}
+\]
+необходимо выполнение условий
+%TODO
+\item Полученная система линейных уравнений не определена, поэтому потребуются
+  граничные условия. В задаче требуются использовать смешанные граничные
+  условия, третьего типа (периодические)
+  по $ u $ и 
+  первого типа % sasha: пятого типа
+  по $ v $.
+  \begin{enumerate}
+    \item Периодические условия требуют также склеивания точек с $ p_{iM} $ с
+      точками $ p_{i1} $. Отсюда  
+      \begin{align*}
+        \frac{\partial S_{iM}}{\partial \omega}(1, 0) &= \frac{\partial S_{i,
+        1}}{\partial
+          \omega}(0,0), & \text{то есть } \sum_{k=1}^3ka^{iM}_{k0} &=
+          a_{10}^{i1},\\
+    \frac{\partial^2 S_{iM}}{\partial \omega^2}(1, 0) &= \frac{\partial^2 S_{i, 1}}{\partial
+    \omega^2}(0,0), & \text{то есть } \sum_{k=2}^3 k(k-1) a^{iM}_{k0} &=
+    2a_{20}^{i1}.
+      \end{align*}
+      %TODO: смешанные?
+     
+    \item % sasha
+      В граничных и угловых точках сетки зададим также условия первого типа: 
+      \[
+        S^{(0, 1)}(0, 0) = p_{ij}^{(0, 1)},\qquad i\in\{0, N\}, \ j =
+        0,\ldots,M.
+        % S^{(1,1)}(0,0) &= p_{ij}^{(1,1)}, \qquad i \in \{0, N\}, \ j\in\{0,M\}.
+      \]
+      Найдём значения величин $ p_{0j}^{(0, 1)} $, $ p_{Nj}^{(0,1)} $ для цилиндра.
+      %TODO: значения pij'
+  \end{enumerate}
+\end{enumerate}
+
+%TODO: таблица коэффициентов ?
+
+\subsection*{Решение полученной СЛАУ}
+Итак, мы получили СЛАУ, которую будем решать методом Жордана --
+Гаусса\footnote{Не будь краевых условий, мы имели бы трёхдиагональную матрицу
+коэффициентов и смогли бы воспользоваться методом прогонки.}:
+\begin{lstlisting}
+function zeros(M, n, m) {
+    for(let i = 0; i < n; ++i)
+        for (let j = 0; j < m; ++j)
+            M[i][j] = 0.;
+}
+
+function diagonalize(M) {
+    let m = M.length;
+    let n = M[0].length;
+    for(let k=0; k<Math.min(m,n); ++k) {
+        // Find the k-th pivot
+        i_max = findPivot(M, k);
+        if (M[i_max, k] == 0)
+            throw "matrix is singular";
+        swap_rows(M, k, i_max);
+        // Do for all rows below pivot
+        for(let i=k+1; i<m; ++i) {
+            // Do for all remaining elements in current row:
+            let c = M[i][k] / M[k][k];
+            for(let j=k+1; j<n; ++j) {
+                M[i][j] = M[i][j] - M[k][j] * c;
+            }
+            // Fill lower triangular matrix with zeros
+            M[i][k] = 0;
+        }
+    }
+}
+
+function findPivot(M, k) {
+    let i_max = k;
+    for(let i=k+1; i<M.length; ++i)
+        if (Math.abs(M[i][k]) > Math.abs(M[i_max][k]))
+            i_max = i;
+    return i_max;
+}
+
+function swap_rows(M, i_max, k) {
+    if (i_max != k) {
+        let temp = M[i_max];
+        M[i_max] = M[k];
+        M[k] = temp;
+    }
+}
+
+function makeM(A, b) {
+    let M = new Array(A.length);
+    for (let i = 0; i < A.length; ++i)
+        M[i] = new Array(A[i].length + 1);
+    for (let i = 0; i < A.length; ++i) {
+        for (let j = 0; j < A[i].length; ++j)
+            M[i][j] = A[i][j];
+        M[i][A[i].length] = b[i];
+    }
+    return M;
+}
+
+function substitute(M) {
+  let m = M.length;
+  for(let i=m-1; i>=0; --i) {
+    let x = M[i][m] / M[i][i];
+    for(let j=i-1; j>=0; --j) {
+      M[j][m] -= x * M[j][i];
+      M[j][i] = 0;
+    }
+    M[i][m] = x;
+    M[i][i] = 1;
+  }
+}
+
+function extractX(M) {
+  let x = [];
+  let m = M.length;
+  let n = M[0].length;
+  for(let i=0; i<m; ++i){
+    x.push(M[i][n-1]);
+  }
+  return x;
+}
+
+function solve(A, b) {
+    let M = makeM(A,b);
+    diagonalize(M);
+    substitute(M);
+    let x = extractX(M);
+    return x;
+}
+\end{lstlisting}
+
+
+\subsection*{Демонстрация программы}
+%TODO: куча картинок
+
+
+
+\end{document}
