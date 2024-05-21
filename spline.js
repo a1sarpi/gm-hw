@@ -2,90 +2,130 @@
 
 class CubicSplineX {
   constructor(control_values, control_t, N_ctr, is_periodic = false) {
-    let n;
-    if (!is_periodic)
-      n = N_ctr - 1;
-    else
-      n = N_ctr;
+    //let n;
+    //if (!is_periodic)
+    //  n = N_ctr - 1;
+    //else
+    //  n = N_ctr;
 
-    let h = new Array(n); // длины отрезков между к.т. (по параметру)
-    for (let i = 0; i < n; ++i) {
-      if (i + 1 == N_ctr && is_periodic)
-        h[i] = 1 - control_t[i];
-      else
-        h[i] = control_t[i + 1] - control_t[i];
-    }
-    this.h = h;
-
-    this.parameters = new Array(n);
-    for (let i = 0; i < n; ++i) {
-      this.parameters[i] = new Array(4); // четыре параметра для каждого отрезка
-    }
-
-    for (let i = 0; i < n; ++i) {
-      this.parameters[i][0] = control_values[i];
-      if (i + 1 == N_ctr && is_periodic)
-        this.parameters[i][1] = control_values[0];
-      else
-        this.parameters[i][1] = control_values[i + 1];
-    }
-
-    let matrix = new Array(2 * n),
-      free = new Array(2 * n);
-    for (let i = 0; i < 2 * n; ++i)
-      matrix[i] = new Array(2 * n);
-    zeros(matrix, 2 * n, 2 * n);
-    for (let i = 0; i < n - 1; ++i) {
-      matrix[2 * i][2 * i] = - 2.;
-      matrix[2 * i][2 * i + 1] = 6.;
-      matrix[2 * i][2 * (i + 1)] = - 4.;
-      matrix[2 * i][2 * (i + 1) + 1] = - 2.;
-
-      matrix[2 * i + 1][2 * i] = - 1. * h[i];
-      matrix[2 * i + 1][2 * i + 1] = 2. * h[i];
-      matrix[2 * i + 1][2 * (i + 1)] = 2. * h[i + 1];
-      matrix[2 * i + 1][2 * (i + 1) + 1] = 1. * h[i + 1];
-
-      free[2 * i] = 0;
-      free[2 * i + 1] = (control_values[i + 2] - control_values[i + 1]) / h[i + 1]
-        - (control_values[i + 1] - control_values[i]) / h[i];
-    }
     if (is_periodic) {
-      matrix[2 * n - 2][2 * (n - 1)] = - 2.;
-      matrix[2 * n - 2][2 * (n - 1) + 1] = 6.;
-      matrix[2 * n - 2][0] = - 4.;
-      matrix[2 * n - 2][1] = - 2.;
+        this.h = new Array(N_ctr); // длины отрезков между к.т. (по параметру)
+        for (let i = 0; i < N_ctr; ++i) {
+          if (i + 1 == N_ctr)
+            this.h[i] = 1 - control_t[i];
+          else
+            this.h[i] = control_t[i + 1] - control_t[i];
+        }
 
-      matrix[2 * n - 1][2 * (n - 1)] = - 1. * h[n - 1];
-      matrix[2 * n - 1][2 * (n - 1) + 1] = 2. * h[n - 1];
-      matrix[2 * n - 1][0] = 2. * h[n - 1];
-      matrix[2 * n - 1][1] = 1. * h[n - 1];
+        this.delta = new Array(N_ctr - 1);
+        for (let i = 0; i < N_ctr - 1; ++i) {
+            this.delta[i] = ( this.control_values[i + 2] - this.control_values[i + 1] ) / this.h[i + 1] - 
+                            ( this.control_values[i + 1] - this.control_values[i] ) / this.h[i];
+        }
 
-      free[2 * n - 2] = 0.;
-      free[2 * n - 1] = (control_values[0] - control_values[n - 1]) / h[n - 1]
-        - (control_values[n - 1] - control_values[n - 2]) / h[n - 1];
     } else {
-      // Граничные условия первого типа:
+        this.h = new Array(N_ctr - 1); // длины отрезков между к.т. (по параметру)
+        for (let i = 0; i < N_ctr - 1; ++i) {
+          this.h[i] = control_t[i + 1] - control_t[i];
+        }
 
+        this.delta = new Array(N_ctr - 2);
+        for (let i = 0; i < N_ctr - 2; ++i) {
+            this.delta[i] = ( this.control_values[i + 2] - this.control_values[i + 1] ) / this.h[i + 1] - 
+                            ( this.control_values[i + 1] - this.control_values[i] ) / this.h[i];
+        }
     }
 
-    let tmp = solve(matrix, free);
-    for (let i = 0; i < n; ++i) {
-      for (let ii = 0; ii < 2; ++ii)
-        this.parameters[i][2 + ii] = tmp[2 * i + ii];
+    if (is_periodic) {
+        this.parameters_p = new Array(N_ctr + 1);
+        this.parameters_M = new Array(N_ctr + 1);
+    } else {
+        this.parameters_p = new Array(N_ctr);
+        this.parameters_M = new Array(N_ctr);
+    }
+
+    for (let i = 0; i < N_ctr; ++i)
+      this.parameters_p[i] = control_values[i];
+    if (is_periodic)
+        this.parameters_p[N_ctr] = this.parameters_p[0];
+    
+    if (is_periodic) {
+        let matrix = new Array(N_ctr),
+            free = new Array(N_ctr);
+        for (let i = 0; i < N_ctr; ++i)
+          matrix[i] = new Array(N_ctr);
+        zeros(matrix, N_ctr, N_ctr);
+
+        for (let i = 0; i < N_ctr; ++i) {
+            if (i == 0) {
+                matrix[i][0] = 2 * (this.h[0] + this.h[1]);
+                matrix[i][1] = this.h[1];
+                matrix[i][N_ctr - 1] = this.h[0];
+
+                free[i] = 6 * this.delta[0];
+            } else if (i == N_ctr - 1) {
+                matrix[i][N_ctr - 1] = 2 * (this.h[0] + this.h[1]);
+                matrix[i][N_ctr - 2] = this.h[N_ctr - 1];
+                matrix[i][0] = this.h[0];
+
+                free[i] = 6 * ( (this.control_values[1] - this.control_values[0]) / this.h[0] - (this.control_values[0] - this.control_values[N_ctr - 1]) / this.h[N_ctr - 1] );
+            } else {
+                matrix[i][i] = 2 * (this.h[i] + this.h[i + 1]);
+                matrix[i][i - 1] = this.h[i];
+                matrix[i][i + 1] = this.h[i + 1];
+
+                free[i] = 6 * this.delta[i];
+            }
+        }
+
+        let tmp = solve(matrix, free);
+        for (let i = 0; i < N_ctr; ++i) {
+            this.parameters_M[i] = tmp[i] / 6; // bar M
+        }
+
+        this.parameters_M[N_ctr] = this.parameters_M[0];
+    } else {
+        let matrix = new Array(N_ctr),
+            free = new Array(N_ctr);
+        for (let i = 0; i < N_ctr; ++i)
+          matrix[i] = new Array(N_ctr);
+        zeros(matrix, N_ctr, N_ctr);
+
+        for (let i = 0; i < N_ctr; ++i) {
+            if (i == 0) {
+                matrix[i][0] = this.h[1];
+                matrix[i][1] = - (this.h[0] + this.h[1]);
+                matrix[i][2] = this.h[0];
+
+                free[i] = 0;
+            } else if (i == N_ctr - 1) {
+                matrix[i][N_ctr - 3] = this.h[N_ctr - 1];
+                matrix[i][N_ctr - 2] = - ( this.h[N_ctr - 2] + this.h[N_ctr - 1] );
+                matrix[i][N_ctr - 1] = this.h[N_ctr - 2];
+
+                free[i] = 0;
+            } else {
+                matrix[i][i - 1] = this.h[i - 1];
+                matrix[i][i] = 2 * (this.h[i - 1] + this.h[i]);
+                matrix[i][i + 1] = this.h[i];
+
+                free[i] = 6 * this.delta[i - 1];
+            }
+        }
+
+        let tmp = solve(matrix, free);
+        for (let i = 0; i < N_ctr; ++i) {
+            this.parameters_M[i] = tmp[i] / 6; // bar M
+        }
     }
   }
 
   calc_value(omega, i) {
-    //let out_value = 0;
-    //for (let ii = 0; ii < 4; ++ii)
-    //    out_value += this.parameters[i][ii] * Math.pow(omega, ii);
-    //return out_value;
     let omega1 = 1 - omega, // psi
       omega2 = omega,
       omega3 = omega * (omega - 1) * (2 - omega),
       omega4 = omega * (omega * omega - 1);
-    let coefs = this.parameters[i];
+    let coefs = [this.parameters_p[i], this.parameters_p[i+1], this.parameters_M[i], this.parameters_M[i+1] ];
     return coefs[0] * omega1 + coefs[1] * omega2 +
       coefs[2] * this.h[i] * this.h[i] * omega3 +
       coefs[3] * this.h[i] * this.h[i] * omega4;
@@ -96,7 +136,7 @@ class CubicSplineX {
       omega2 = 1. / this.h[i],
       omega3 = (6 * omega - 3 * omega * omega - 2) / this.h[i],
       omega4 = (3 * omega * omega - 1) / this.h[i];
-    let coefs = this.parameters[i];
+    let coefs = [this.parameters_p[i], this.parameters_p[i+1], this.parameters_M[i], this.parameters_M[i+1] ];
     return coefs[0] * omega1 + coefs[1] * omega2 +
       coefs[2] * this.h[i] * this.h[i] * omega3 +
       coefs[3] * this.h[i] * this.h[i] * omega4;
@@ -107,7 +147,7 @@ class CubicSplineX {
       omega2 = 0.,
       omega3 = (6 - 6 * omega) / (this.h[i] * this.h[i]),
       omega4 = (6 * omega) / (this.h[i] * this.h[i]);
-    let coefs = this.parameters[i];
+    let coefs = [this.parameters_p[i], this.parameters_p[i+1], this.parameters_M[i], this.parameters_M[i+1] ];
     return coefs[0] * omega1 +
       coefs[1] * omega2 +
       coefs[2] * this.h[i] * this.h[i] * omega3 +
@@ -121,7 +161,7 @@ class BicubicSplineX {
     const n = N_ctr - 1;
     const m = M_ctr; // Так как мы хотим замкнуть цилиндр вдоль полярной координаты
 
-    this.u_splines = new Array(m);
+    this.u_splines = new Array(m); // S(t, tau_l) = S(u, v_j)
     for (let j = 0; j < M_ctr; ++j) {
       let tmp_control_values = new Array(N_ctr),
         tmp_control_u = new Array(N_ctr);
@@ -143,7 +183,7 @@ class BicubicSplineX {
       v_splines[i] = new CubicSplineX(tmp_control_values, tmp_control_v, M_ctr, true);
     }
 
-    this.u_vv_splines = new Array(m);
+    this.u_vv_splines = new Array(m); // bar M^{0, 2} (t, tau_l) = ... (u, v_j)
     for (let j = 0; j < m; ++j) {
       let tmp_control_values = new Array(N_ctr),
         tmp_control_u = new Array(N_ctr);
@@ -161,42 +201,47 @@ class BicubicSplineX {
       this.d[i] = control_v[0][i + 1] - control_v[0][i];
   }
 
-  calc_value(omega, xi, ii, jj) {
-    let psi1 = 1 - omega,
-      psi2 = omega,
-      psi3 = omega * (omega - 1) * (2 - omega),
-      psi4 = omega * (omega * omega - 1);
-    let coefs = [this.u_splines[jj].calc_value(0, ii),
-    this.u_splines[jj].calc_value(1, ii),
-    this.u_vv_splines[jj].calc_second_diff(xi, ii),
-    this.u_vv_splines[jj].calc_second_diff(xi, ii)];
-    return psi1 * coefs[0] +
-      psi2 * coefs[1] +
-      psi3 * this.d[ii] * this.d[ii] * coefs[2] +
-      psi4 * this.d[ii] * this.d[ii] * coefs[3];
-  }
+    calc_value(omega, xi, ii, jj) {
+        let psi1 = 1 - xi,
+            psi2 = xi,
+            psi3 = xi * (xi - 1) * (2 - xi),
+            psi4 = xi * (xi * xi - 1);
+        let coefs = [this.u_splines[jj].calc_value(omega, ii),
+            this.u_splines[jj].calc_value(omega, ii),
+            this.u_vv_splines[jj].calc_second_diff(omega, ii),
+            this.u_vv_splines[jj].calc_second_diff(omega, ii)];
+        return psi1 * coefs[0] +
+            psi2 * coefs[1] +
+            psi3 * this.d[ii] * this.d[ii] * coefs[2] +
+            psi4 * this.d[ii] * this.d[ii] * coefs[3];
+    }
 
-  calc_tangent_u(omega, xi, ii, jj) {
-    //let psi1 = 1 - omega,
-    //    psi2 = omega,
-    //    psi3 = omega * (omega - 1) * (2 - omega),
-    //    psi4 = omega * (omega*omega - 1);
-    //let coefs = [ this.u_splines[jj].calc_value(0, ii),
-    //              this.u_splines[jj].calc_value(1, ii),
-    //              this.u_splines[jj].calc_second_diff(xi, ii),
-    //              this.u_splines[jj].calc_second_diff(xi, ii) ];
-    //return psi1 * coefs[0] +
-    //    psi2 * coefs[1] +
-    //    psi3 * this.d[ii]*this.d[ii] * coefs[2] +
-    //    psi4 * this.d[ii]*this.d[ii] * coefs[3];
-  }
-  calc_tangent_v(omega, xi, ii, jj) {
-    //let out_value = 0;
-    //for (let i = 0; i < 4; ++i) 
-    //    for (let j = 1; j < 4; ++j)
-    //        out_value += j * this.parameters[ii][jj][i][j] * Math.pow(omega, i) * Math.pow(xi, j-1);
-    //return out_value;
-  }
+    calc_tangent_u(omega, xi, ii, jj) {
+        let psi1 = 1 - xi,
+            psi2 = xi,
+            psi3 = xi * (xi - 1) * (2 - xi),
+            psi4 = xi * (xi * xi - 1);
+        let coefs = [this.u_splines[jj].calc_value(omega, ii),
+            this.u_splines[jj].calc_value(omega, ii),
+            this.u_vv_splines[jj].calc_second_diff(omega, ii),
+            this.u_vv_splines[jj].calc_second_diff(omega, ii)];
+        return coefs[0] * omega1 + coefs[1] * omega2 +
+          coefs[2] * this.h[i] * this.h[i] * omega3 +
+          coefs[3] * this.h[i] * this.h[i] * omega4;
+    }
+    calc_tangent_v(omega, xi, ii, jj) {
+        let psi1 = - 1. / this.h[i],
+            psi2 = 1. / this.h[i],
+            psi3 = (6 * xi - 3 * xi * xi - 2) / this.h[i],
+            psi4 = (3 * xi * xi - 1) / this.h[i];
+        let coefs = [this.u_splines[jj].calc_value(omega, ii),
+            this.u_splines[jj].calc_value(omega, ii),
+            this.u_vv_splines[jj].calc_second_diff(omega, ii),
+            this.u_vv_splines[jj].calc_second_diff(omega, ii)];
+        return coefs[0] * omega1 + coefs[1] * omega2 +
+          coefs[2] * this.h[i] * this.h[i] * omega3 +
+          coefs[3] * this.h[i] * this.h[i] * omega4;
+    }
 }
 
 class Spline {
