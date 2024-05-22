@@ -211,12 +211,12 @@ class BicubicSplineX {
         for (let j = 0; j < M_ctr; ++j) {
             let tmp_control_values = new Array(N_ctr),
                 tmp_control_u = new Array(N_ctr);
-            for (let i = 0; i < N_ctr - 1; ++i) {
+            for (let i = 0; i < N_ctr; ++i) {
                 tmp_control_values[i] = v_splines[i].calc_second_diff(0, j);
                 tmp_control_u[i] = control_u[i][j];
             }
-            tmp_control_values[N_ctr - 1] = v_splines[N_ctr - 1].calc_second_diff(1, M_ctr - 1);
-            tmp_control_u[N_ctr - 1] = control_u[N_ctr - 1][j];
+            //tmp_control_values[N_ctr - 1] = v_splines[N_ctr - 1].calc_second_diff(1, M_ctr - 1);
+            //tmp_control_u[N_ctr - 1] = control_u[N_ctr - 1][j];
             //console.log(tmp_control_values);
             this.u_vv_splines[j] = new CubicSplineX(tmp_control_values, tmp_control_u, N_ctr);
         }
