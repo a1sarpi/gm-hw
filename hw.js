@@ -131,8 +131,8 @@ function main() {
 	guiAreaBounds.add(Data.controlsParameters, 'Xmin', 0, 3 * Math.PI).onChange(function (e) { Data.setDependentGeomParameters(); Data.generateControlPoints(); });
 	guiAreaBounds.add(Data.controlsParameters, 'Xmax', 0, 3 * Math.PI).onChange(function (e) { Data.setDependentGeomParameters(); Data.generateControlPoints(); });
 	guiAreaBounds.add(Data.controlsParameters, 'Radius', 0, 5).onChange(function (e) { Data.setDependentGeomParameters(); Data.generateControlPoints(); });
-	guiCountControlPoints.add(Data.controlsParameters, 'N_ctr', 2, 10, 1).onChange(function (e) { Data.generateControlPoints(); });
-	guiCountControlPoints.add(Data.controlsParameters, 'M_ctr', 2, 10, 1).onChange(function (e) { Data.generateControlPoints(); });
+	guiCountControlPoints.add(Data.controlsParameters, 'N_ctr', 4, 10, 1).onChange(function (e) { Data.generateControlPoints(); });
+	guiCountControlPoints.add(Data.controlsParameters, 'M_ctr', 4, 10, 1).onChange(function (e) { Data.generateControlPoints(); });
 	guiCtrPointsParams.add(Data.controlsParameters, 'showCtrPoints').onChange(function (e) { Data.setVertexBuffersAndDraw(); });
 	guiCtrPointsParams.add(Data.controlsParameters, 'controlNet').onChange(function (e) { Data.setVertexBuffersAndDraw(); });
 	
