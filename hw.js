@@ -142,6 +142,7 @@ function main() {
 	guiSplineParams.add(Data.controlsParameters, 'paramCoords', ["uniform", "chordal", "centripetal"]).onChange(function (e) { Data.calculateAndDraw(); });
 	guiSplineParams.add(Data.controlsParameters, 'visualize', ["points", "lines", "surface"]).onChange(function (e) { Data.setVertexBuffersAndDraw(); });
 	guiSplineParams.add(Data.controlsParameters, 'showNormals').onChange(function (e) { Data.setVertexBuffersAndDraw(); });
+	guiSplineParams.add(Data.controlsParameters, 'granich').onChange(function (e) { Data.calculateAndDraw(); });
 
     // gl.depthFunc(gl.LEQUAL);
     gl.enable(gl.DEPTH_TEST);
@@ -411,7 +412,8 @@ const Data = {
 		visualize: "points",
 		N: 8,
 		M: 8,
-		showNormals: false
+		showNormals: false,
+        granich: false
 	},
 
     init: function (gl, viewport) {
@@ -1380,7 +1382,7 @@ const Data = {
         const m = M_ctr - 1;
 
         this.initializeParametricCoordinates();
-        this.spline = new Spline(this.pointsCtr, this.N_ctr, this.M_ctr);
+        this.spline = new Spline(this.pointsCtr, this.N_ctr, this.M_ctr, '1' ? this.controlsParameters.granich : '4');
 
         let ii = 0, jj, omega, xi, u, v;
 

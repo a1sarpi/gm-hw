@@ -297,13 +297,21 @@ class Spline {
             }
         }
         console.log("Строим сплайн x(u, v):");
-        this.x_spline = new BicubicSplineX(control_values_x, control_values_u, control_values_v, N_ctr, M_ctr, { num: granich,
-            p0_prime: (control_values_x[N_ctr - 1][0] - control_values_x[0][0]),
-            p1_prime: (control_values_x[N_ctr - 1][0] - control_values_x[0][0]) });
-        console.log("Строим сплайн y(u, v):");
-        this.y_spline = new BicubicSplineX(control_values_y, control_values_u, control_values_v, N_ctr, M_ctr, { num: granich, p0_prime: 0, p1_prime: 0 });
-        console.log("Строим сплайн z(u, v):");
-        this.z_spline = new BicubicSplineX(control_values_z, control_values_u, control_values_v, N_ctr, M_ctr, { num: granich, p0_prime: 0, p1_prime: 0 });
+        if(granich == '4') {
+            this.x_spline = new BicubicSplineX(control_values_x, control_values_u, control_values_v, N_ctr, M_ctr, { num: '4' });
+            console.log("Строим сплайн y(u, v):");
+            this.y_spline = new BicubicSplineX(control_values_y, control_values_u, control_values_v, N_ctr, M_ctr, { num: granich });
+            console.log("Строим сплайн z(u, v):");
+            this.z_spline = new BicubicSplineX(control_values_z, control_values_u, control_values_v, N_ctr, M_ctr, { num: granich });
+        } else {
+            this.x_spline = new BicubicSplineX(control_values_x, control_values_u, control_values_v, N_ctr, M_ctr, { num: granich,
+                p0_prime: (control_values_x[N_ctr - 1][0] - control_values_x[0][0]),
+                p1_prime: (control_values_x[N_ctr - 1][0] - control_values_x[0][0]) });
+            console.log("Строим сплайн y(u, v):");
+            this.y_spline = new BicubicSplineX(control_values_y, control_values_u, control_values_v, N_ctr, M_ctr, { num: granich, p0_prime: 0, p1_prime: 0 });
+            console.log("Строим сплайн z(u, v):");
+            this.z_spline = new BicubicSplineX(control_values_z, control_values_u, control_values_v, N_ctr, M_ctr, { num: granich, p0_prime: 0, p1_prime: 0 });
+        }
     }
 
     calc_value(omega, xi, ii, jj) {
