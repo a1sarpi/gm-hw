@@ -3,7 +3,7 @@
 class CubicSplineX {
     constructor(control_values, control_t, N_ctr, is_periodic = false, granich = { num: '4' }) {
         console.assert(!isNaN(control_values[0]), 'Автор неуч, control_values[0] == NaN!  ' + control_values);
-        console.assert(!isNaN(control_values[N_ctr - 1]), 'Автор неуч, control_values[N_ctr - 1] == NaN!!  ' + control_values);
+        //console.assert(!isNaN(control_values[N_ctr - 1]), 'Автор неуч, control_values[N_ctr - 1] == NaN!!  ' + control_values);
         if (is_periodic) {
             control_values.push(control_values[0]);
             this.h = new Array(N_ctr); // длины отрезков между к.т. (по параметру)
@@ -60,7 +60,7 @@ class CubicSplineX {
                 free[i] = 6 * this.delta[(i - 1 + N_ctr) % N_ctr];
             }
 
-            let tmp = solve(matrix, free);
+            let tmp = period_progon(matrix, free);
             for (let i = 0; i < N_ctr; ++i) {
                 this.parameters_M[i] = tmp[i] / 6; // bar M
             }
@@ -118,7 +118,7 @@ class CubicSplineX {
                 }
             }
 
-            let tmp = solve(matrix, free);
+            let tmp = period_progon(matrix, free);
             for (let i = 0; i < N_ctr; ++i) {
                 this.parameters_M[i] = tmp[i] / 6; // bar M
             }
