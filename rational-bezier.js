@@ -42,19 +42,19 @@ def deCasteljau2(P, n, m, u0, v0):
         return deCasteljau1(Q, n, u0)
 */
 
-//function Bernstein(i, n, u) {
-//    let tmp = new Array(n+1);
-//    for (let i = 0; i < n+1; ++i)
-//        tmp[i] = 0.0;
-//    tmp[n-i] = 1.0;
-//    let u1 = 1.0 - u;
-//    for (let k = 1; k < n+1; ++k) {
-//        for (let j = n; j > k-1; --j) {
-//            tmp[j] = u1 * tmp[j] + u * tmp[j-1];
-//        }
-//    }
-//    return tmp[n];
-//}
+function Bernstein(i, n, u) {
+    let tmp = new Array(n+1);
+    for (let i = 0; i < n+1; ++i)
+        tmp[i] = 0.0;
+    tmp[n-i] = 1.0;
+    let u1 = 1.0 - u;
+    for (let k = 1; k < n+1; ++k) {
+        for (let j = n; j > k-1; --j) {
+            tmp[j] = u1 * tmp[j] + u * tmp[j-1];
+        }
+    }
+    return tmp[n];
+}
 
 function allBernstein(n, u) {
     let B = new Array(n+1);
@@ -71,6 +71,25 @@ function allBernstein(n, u) {
         }
         B[j] = saved;
     }
+    return B;
+}
+
+function Bernstein_prime(i, n, u) {
+    if (i == 0)
+        return - n * Math.pow(1 - u, n-1);
+    else if (i == n) 
+        return n * Math.pow(u, n-1);
+    
+    if (Math.abs(u) > 1e-6 && Math.abs(u) > 1e-6)
+        return n * (i - u*n) * Bernstein(i, n-1, u) / ( (n-1) * u )
+    else
+        return 0.;
+}
+
+function allBernstein_prime(n, u) {
+    let B = new Array(n+1);
+    for (let i = 0; i < n+1; ++i)
+        B[i] = Bernstein_prime(i, n, u);
     return B;
 }
 

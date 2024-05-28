@@ -662,7 +662,7 @@ const Data = {
         this.ISIZE = this.indicesCtr.BYTES_PER_ELEMENT;
 
         if (this.controlsParameters.lineSurfaceSpline)
-            this.calculateLineSurfaceSpline();
+            this.calculateRationalBezierSpline();
 
         this.setVertexBuffersAndDraw();
     },
@@ -901,7 +901,7 @@ const Data = {
                     this.verticesCtr[offset * 4 + 2] = this.pointsCtr[this.iMove][this.jMove].z;
 
                 if (this.controlsParameters.lineSurfaceSpline)
-                    this.calculateLineSurfaceSpline();
+                    this.calculateRationalBezierSpline();
             }
             else {
                 const dx = x - this.lastPosX;
@@ -1246,12 +1246,12 @@ const Data = {
     },
 	calculateAndDraw: function () {
 		if (this.controlsParameters.lineSurfaceSpline)
-			this.calculateLineSurfaceSpline();
+			this.calculateRationalBezierSpline();
         
         this.setVertexBuffersAndDraw();
     },
     
-    calculateLineSurfaceSpline: function () {
+    calculateRationalBezierSpline: function () {
         const N = this.controlsParameters.N;
         const M = this.controlsParameters.M;
 
@@ -1276,27 +1276,17 @@ const Data = {
                 let v = j * dv;
                 
                 // CALCULATE SPLINE COORDINATES
-                //const [x, y, z] = this.spline.calc_value(omega, xi, ii, jj);
-                
-                /*S = deCasteljau2(Pw, len(Pw[0])-1, len(Pw)-1, u, v)
-                H = 0
-                Bn = allBernstein(len(Pw[0])-1, u)
-                Bm = allBernstein(len(Pw)-1, v)
-                for r in range(0, len(Pw[0])):
-                    for s in range(0, len(Pw)):
-                        H += Bn[r]*Bm[s]*omega[s][r]
-                surfaceX.append(S.x/H)
-                surfaceY.append(S.y/H)
-                surfaceZ.append(S.z/H) */
 
                 //let S = deCasteljau2(this.pointsCtr, N_ctr-1, M_ctr-1, u, v)
-                let H = 0
-                let Bn = allBernstein(N_ctr-1, u)
-                let Bm = allBernstein(M_ctr-1, v)
+                let H = 0;
+                let x = 0, y = 0, z = 0;
+
+                let Bn = allBernstein(N_ctr-1, u);
+                let Bm = allBernstein(M_ctr-1, v);
                 for (let r = 0; r < N_ctr; ++r)
                     for (let s = 0; s < M_ctr; ++s)
                         H += Bn[r]*Bm[s]*this.pointsCtr[r][s].omega;
-                let x = 0, y = 0, z = 0;
+
                 for (let r = 0; r < N_ctr; ++r) {
                     for (let s = 0; s < M_ctr; ++s) {
                         x += Bn[r] * Bm[s] * this.pointsCtr[r][s].omega * this.pointsCtr[r][s].x;
@@ -1304,28 +1294,59 @@ const Data = {
                         z += Bn[r] * Bm[s] * this.pointsCtr[r][s].omega * this.pointsCtr[r][s].z;
                     }
                 }
-
-                x = x/H;
-                y = y/H;
-                z = z/H;
                 
-                this.pointsSpline[i][j] = new Point(x, y, z);
+                this.pointsSpline[i][j] = new Point(x / H, y / H, z / H);
+
+
+                let Bn_prime_u = allBernstein_prime(N_ctr-1, u);
+                let Bm_prime_v = allBernstein_prime(M_ctr-1, v);
+
+
+                let H_prime_u = 0,
+                    x_prime_u = 0,
+                    y_prime_u = 0,
+                    z_prime_u = 0,
+                    H_prime_v = 0,
+                    x_prime_v = 0,
+                    y_prime_v = 0,
+                    z_prime_v = 0;
+                for (let r = 0; r < N_ctr; ++r)
+                    for (let s = 0; s < M_ctr; ++s) {
+                        H_prime_u += Bn_prime_u[r]*Bm[s]*this.pointsCtr[r][s].omega;
+                        H_prime_v += Bn[r]*Bm_prime_v[s]*this.pointsCtr[r][s].omega;
+                    }
+                for (let r = 0; r < N_ctr; ++r) {
+                    for (let s = 0; s < M_ctr; ++s) {
+                        x_prime_u += Bn_prime_u[r] * Bm[s] * this.pointsCtr[r][s].omega * this.pointsCtr[r][s].x;
+                        y_prime_u += Bn_prime_u[r] * Bm[s] * this.pointsCtr[r][s].omega * this.pointsCtr[r][s].y;
+                        z_prime_u += Bn_prime_u[r] * Bm[s] * this.pointsCtr[r][s].omega * this.pointsCtr[r][s].z;
+
+                        x_prime_v += Bn[r] * Bm_prime_v[s] * this.pointsCtr[r][s].omega * this.pointsCtr[r][s].x;
+                        y_prime_v += Bn[r] * Bm_prime_v[s] * this.pointsCtr[r][s].omega * this.pointsCtr[r][s].y;
+                        z_prime_v += Bn[r] * Bm_prime_v[s] * this.pointsCtr[r][s].omega * this.pointsCtr[r][s].z;
+                    }
+                }
 
                 //CALCULATE TANGENT VECTORS
-                //const [x_u, y_u, z_u] = this.spline.calc_tangent_u(omega, xi, ii, jj);
-                //const [x_v, y_v, z_v] = this.spline.calc_tangent_v(omega, xi, ii, jj);
-                //
-                //const pt_u = vec3.fromValues(x_u, y_u, z_u);
-                //const pt_v = vec3.fromValues(x_v, y_v, z_v);
+                const x_u = (x_prime_u * H - x * H_prime_u) / (H*H);
+                const y_u = (y_prime_u * H - y * H_prime_u) / (H*H);
+                const z_u = (z_prime_u * H - z * H_prime_u) / (H*H);
+
+                const x_v = (x_prime_v * H - x * H_prime_v) / (H*H);
+                const y_v = (y_prime_v * H - y * H_prime_v) / (H*H);
+                const z_v = (z_prime_v * H - z * H_prime_v) / (H*H);
+
+                const pt_u = vec3.fromValues(x_u, y_u, z_u);
+                const pt_v = vec3.fromValues(x_v, y_v, z_v);
 
                 //CALCULATE NORMAL VECTOR
-                //const normal = vec3.create();
-                //vec3.cross(normal, pt_u, pt_v)
-                //vec3.normalize(normal, normal);
-                //
-                //this.normalsSpline[i][j][0] = normal[0];
-                //this.normalsSpline[i][j][1] = normal[1];
-                //this.normalsSpline[i][j][2] = normal[2];
+                const normal = vec3.create();
+                vec3.cross(normal, pt_u, pt_v);
+                vec3.normalize(normal, normal);
+
+                this.normalsSpline[i][j][0] = normal[0];
+                this.normalsSpline[i][j][1] = normal[1];
+                this.normalsSpline[i][j][2] = normal[2];
         	}
         }
 
