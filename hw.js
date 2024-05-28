@@ -102,7 +102,7 @@ function main() {
 	
 	const guiCtrPointsParams = gui.addFolder('Control point parameters');
 	const guiAreaBounds = guiCtrPointsParams.addFolder('Area Bounds');
-	const guiCountControlPoints = guiCtrPointsParams.addFolder('Count control points');
+	//const guiCountControlPoints = guiCtrPointsParams.addFolder('Count control points');
 	const guiSplineParams = gui.addFolder('Spline parameters');
 	const guiCountSplinePoints = guiSplineParams.addFolder('Count surface spline points');
 
@@ -128,21 +128,18 @@ function main() {
 
     })();
 	
-	guiAreaBounds.add(Data.controlsParameters, 'Xmin', 0, 3 * Math.PI).onChange(function (e) { Data.setDependentGeomParameters(); Data.generateControlPoints(); });
-	guiAreaBounds.add(Data.controlsParameters, 'Xmax', 0, 3 * Math.PI).onChange(function (e) { Data.setDependentGeomParameters(); Data.generateControlPoints(); });
+	guiAreaBounds.add(Data.controlsParameters, 'H', 0, 5).onChange(function (e) { Data.setDependentGeomParameters(); Data.generateControlPoints(); });
 	guiAreaBounds.add(Data.controlsParameters, 'Radius', 0, 5).onChange(function (e) { Data.setDependentGeomParameters(); Data.generateControlPoints(); });
-	guiCountControlPoints.add(Data.controlsParameters, 'N_ctr', 4, 10, 1).onChange(function (e) { Data.generateControlPoints(); });
-	guiCountControlPoints.add(Data.controlsParameters, 'M_ctr', 4, 10, 1).onChange(function (e) { Data.generateControlPoints(); });
 	guiCtrPointsParams.add(Data.controlsParameters, 'showCtrPoints').onChange(function (e) { Data.setVertexBuffersAndDraw(); });
 	guiCtrPointsParams.add(Data.controlsParameters, 'controlNet').onChange(function (e) { Data.setVertexBuffersAndDraw(); });
 	
 	guiSplineParams.add(Data.controlsParameters, 'lineSurfaceSpline').onChange(function (e) { Data.calculateAndDraw(); });
 	guiCountSplinePoints.add(Data.controlsParameters, 'N', 2, 50, 1).onChange(function (e) { Data.calculateAndDraw(); });
 	guiCountSplinePoints.add(Data.controlsParameters, 'M', 2, 50, 1).onChange(function (e) { Data.calculateAndDraw(); });
-	guiSplineParams.add(Data.controlsParameters, 'paramCoords', ["uniform", "chordal", "centripetal"]).onChange(function (e) { Data.calculateAndDraw(); });
+	//guiSplineParams.add(Data.controlsParameters, 'paramCoords', ["uniform", "chordal", "centripetal"]).onChange(function (e) { Data.calculateAndDraw(); });
 	guiSplineParams.add(Data.controlsParameters, 'visualize', ["points", "lines", "surface"]).onChange(function (e) { Data.setVertexBuffersAndDraw(); });
 	guiSplineParams.add(Data.controlsParameters, 'showNormals').onChange(function (e) { Data.setVertexBuffersAndDraw(); });
-	guiSplineParams.add(Data.controlsParameters, 'granich').onChange(function (e) { Data.calculateAndDraw(); });
+	//guiSplineParams.add(Data.controlsParameters, 'granich').onChange(function (e) { Data.calculateAndDraw(); });
 
     // gl.depthFunc(gl.LEQUAL);
     gl.enable(gl.DEPTH_TEST);
@@ -203,11 +200,12 @@ function unproject(win, modelView, projection, viewport) {
 }
 
 class Point {
-    constructor(x, y, z) {
+    constructor(x, y, z, omega = 1.) {
         this.select = false;
         this.x = x;
         this.y = y;
         this.z = z;
+        this.omega = omega;
         this.transformMatrix = mat4.create();
         this.winx = 0.0;
         this.winz = 0.0;
@@ -400,11 +398,10 @@ const Data = {
 	lengthVector: 0.0,
 	heighTip: 0.0,
 	controlsParameters: {
-		Xmin: 0.0,
-		Xmax: 3 * Math.PI,
+        H: 1.0,
         Radius: 1.5,
-		N_ctr: 4, 
-		M_ctr: 4,
+        N_ctr: 3,
+        M_ctr: 2,
 		showCtrPoints: true,
         controlNet: false,
 		lineSurfaceSpline: false,
@@ -622,8 +619,8 @@ const Data = {
         this.setDependentGeomParameters();
     },
     setDependentGeomParameters: function () {
-		const Xmin = this.controlsParameters.Xmin,
-			  Xmax = this.controlsParameters.Xmax, 
+		const Xmin = - this.controlsParameters.H / 2.,
+			  Xmax = this.controlsParameters.H/2, 
               Radius = this.controlsParameters.Radius;
         this.Xmid = Xmin + (Xmax - Xmin) / 2.0;
 
@@ -633,24 +630,31 @@ const Data = {
         this.resetCamera(false);
     },
     generateControlPoints: function () {
-		const Xmin = this.controlsParameters.Xmin,
-			  Xmax = this.controlsParameters.Xmax, 
+		const Xmin = - this.controlsParameters.H / 2,
+			  Xmax = this.controlsParameters.H / 2, // this.controlsParameters.Xmax, 
               Radius = this.controlsParameters.Radius;
-		this.N_ctr = this.controlsParameters.N_ctr,
-		this.M_ctr = this.controlsParameters.M_ctr,
+		this.N_ctr = 3; //this.controlsParameters.N_ctr,
+		this.M_ctr = 2; //this.controlsParameters.M_ctr,
         this.pointsCtr = new Array(this.N_ctr);
         for (let i = 0; i < this.N_ctr; i++)
             this.pointsCtr[i] = new Array(this.M_ctr);
 
-        for (let i = 0; i < this.N_ctr; i++)
-            for (let j = 0; j < this.M_ctr; j++) {
-                const x = Xmin + i * (Xmax - Xmin) / (this.N_ctr - 1) - this.Xmid;
-                const y = Radius * Math.cos( 2 * j * Math.PI / (this.M_ctr) );
-                const z = -Radius * Math.sin( 2 * j * Math.PI / (this.M_ctr) );
+        this.add_coords(0, 0, Xmin, Radius, 0, 1);
+        this.add_coords(1, 0, Xmin, Radius, Radius, 2);
+        this.add_coords(2, 0, Xmin, 0, Radius, 1);
+        
+        this.add_coords(0, 1, Xmax, Radius, 0, 1);
+        this.add_coords(1, 1, Xmax, Radius, Radius, 2);
+        this.add_coords(2, 1, Xmax, 0, Radius, 1);
 
-                this.add_coords(i, j, x, y, z);
-            }
-
+        /*this.add_coords(0, 0, 1, 1, 0, 1);
+        this.add_coords(1, 0, 1, 1, 1, 1);
+        this.add_coords(2, 0, 2, 0, 2, 2);
+        
+        this.add_coords(0, 1, -1, 1, 0, 1);
+        this.add_coords(1, 1, -1, 1, 1, 1);
+        this.add_coords(2, 1, -2, 0, 2, 2);*/
+        
         this.add_vertices(this.N_ctr, this.M_ctr);
         this.FSIZE = this.verticesCtr.BYTES_PER_ELEMENT;
 
@@ -672,8 +676,8 @@ const Data = {
     setLeftButtonDown: function (value) {
         this.leftButtonDown = value;
     },
-    add_coords: function (i, j, x, y, z) {
-        const pt = new Point(x, y, z);
+    add_coords: function (i, j, x, y, z, omega) {
+        const pt = new Point(x, y, z, omega);
         this.pointsCtr[i][j] = pt;
     },
         setAxes: function () {
@@ -964,7 +968,6 @@ const Data = {
         this.setVertexBuffersAndDraw();
     },
     add_vertices: function (n, m) {
-		
 		const totalLength = n * m;
 		
         this.verticesCtr = new Float32Array(totalLength * 4);
@@ -1054,27 +1057,27 @@ const Data = {
         this.gl.disableVertexAttribArray(this.a_transformMatrix + 3);
         this.gl.uniform4f(this.u_color, 0.0, 0.0, 0.0, 1.0);
 
-				for (i=0; i<3; i++) {
-						switch (i) {
-						case 0:
-        				q = quat.rotationTo(quat.create(), [0.0, 0.0, 1.0], [1.0, 0.0, 0.0]);
-		        		translateMatrix = mat4.fromTranslation(mat4.create(), vec3.fromValues(this.verticesAxes[3], this.verticesAxes[4], this.verticesAxes[5])); //x_max
-								break;
-						case 1:
-        				q = quat.rotationTo(quat.create(), [0.0, 0.0, 1.0], [0.0, 1.0, 0.0]);
-		        		translateMatrix = mat4.fromTranslation(mat4.create(), vec3.fromValues(this.verticesAxes[9], this.verticesAxes[10], this.verticesAxes[11])); //y_max
-								break;
-						case 2:
-        				q = quat.rotationTo(quat.create(), [0.0, 0.0, 1.0], [0.0, 0.0, 1.0]);
-		        		translateMatrix = mat4.fromTranslation(mat4.create(), vec3.fromValues(this.verticesAxes[15], this.verticesAxes[16], this.verticesAxes[17])); //z_max
-								break;
-						}
-		        rotateMatrix = mat4.fromQuat(mat4.create(), q);
-		        axesTransformMatrix = mat4.mul(mat4.create(), translateMatrix, rotateMatrix);
-		        axesTransformMatrix = mat4.mul(mat4.create(), transformMatrix, axesTransformMatrix);
-		        this.gl.uniformMatrix4fv(this.u_mvpMatrix, false, axesTransformMatrix);
-		        this.gl.drawElements(this.gl.TRIANGLES, countTipIndices, this.gl.UNSIGNED_SHORT, 0);
-            
+        for (i=0; i<3; i++) {
+            switch (i) {
+                case 0:
+                    q = quat.rotationTo(quat.create(), [0.0, 0.0, 1.0], [1.0, 0.0, 0.0]);
+                    translateMatrix = mat4.fromTranslation(mat4.create(), vec3.fromValues(this.verticesAxes[3], this.verticesAxes[4], this.verticesAxes[5])); //x_max
+                    break;
+                case 1:
+                    q = quat.rotationTo(quat.create(), [0.0, 0.0, 1.0], [0.0, 1.0, 0.0]);
+                    translateMatrix = mat4.fromTranslation(mat4.create(), vec3.fromValues(this.verticesAxes[9], this.verticesAxes[10], this.verticesAxes[11])); //y_max
+                    break;
+                case 2:
+                    q = quat.rotationTo(quat.create(), [0.0, 0.0, 1.0], [0.0, 0.0, 1.0]);
+                    translateMatrix = mat4.fromTranslation(mat4.create(), vec3.fromValues(this.verticesAxes[15], this.verticesAxes[16], this.verticesAxes[17])); //z_max
+                    break;
+            }
+            rotateMatrix = mat4.fromQuat(mat4.create(), q);
+            axesTransformMatrix = mat4.mul(mat4.create(), translateMatrix, rotateMatrix);
+            axesTransformMatrix = mat4.mul(mat4.create(), transformMatrix, axesTransformMatrix);
+            this.gl.uniformMatrix4fv(this.u_mvpMatrix, false, axesTransformMatrix);
+            this.gl.drawElements(this.gl.TRIANGLES, countTipIndices, this.gl.UNSIGNED_SHORT, 0);
+
         }
         
         const mvMatr = mat4.mul(mat4.create(), this.cam, this.world);
@@ -1247,196 +1250,82 @@ const Data = {
         
         this.setVertexBuffersAndDraw();
     },
-
-    initializeParametricCoordinates: function() {
-        let i, j;
-
-        const N_ctr = this.N_ctr;
-        const M_ctr = this.M_ctr;
-        const N = this.controlsParameters.N;
-        const M = this.controlsParameters.M;
-        const n = N_ctr - 1;
-        const m = M_ctr;
-
-        let u_dist = new Array(N_ctr - 1);
-        for (i = 0; i < N_ctr-1; i++) {
-            u_dist[i] = new Array(M_ctr);
-        }
-
-        let v_dist = new Array(N_ctr);
-        for (i = 0; i < N_ctr; i++) {
-            v_dist[i] = new Array(M_ctr);
-        }
-
-        for (i = 0; i < N_ctr - 1; i++) {
-            for (j = 0; j < M_ctr; j++) {
-                if (this.controlsParameters.paramCoords == "chordal") {
-                    u_dist[i][j] = Math.hypot(
-                        this.pointsCtr[i + 1][j].x - this.pointsCtr[i][j].x,
-                        this.pointsCtr[i + 1][j].y - this.pointsCtr[i][j].y,
-                        this.pointsCtr[i + 1][j].z - this.pointsCtr[i][j].z);
-                }
-                if (this.controlsParameters.paramCoords == "centripetal") {
-                    u_dist[i][j] = Math.sqrt(Math.hypot(
-                        this.pointsCtr[i + 1][j].x - this.pointsCtr[i][j].x,
-                        this.pointsCtr[i + 1][j].y - this.pointsCtr[i][j].y,
-                        this.pointsCtr[i + 1][j].z - this.pointsCtr[i][j].z));
-                }
-            }
-        }
-
-        for (i = 0; i < N_ctr; i++) {
-            for (j = 0; j < M_ctr; j++) {
-                if(j != M_ctr - 1) {
-                    if (this.controlsParameters.paramCoords == "chordal") {
-                        v_dist[i][j] = Math.hypot(
-                            this.pointsCtr[i][j + 1].x - this.pointsCtr[i][j].x,
-                            this.pointsCtr[i][j + 1].y - this.pointsCtr[i][j].y,
-                            this.pointsCtr[i][j + 1].z - this.pointsCtr[i][j].z);
-                    }
-                    if (this.controlsParameters.paramCoords == "centripetal") {
-                        v_dist[i][j] = Math.sqrt(Math.hypot(
-                            this.pointsCtr[i][j + 1].x - this.pointsCtr[i][j].x,
-                            this.pointsCtr[i][j + 1].y - this.pointsCtr[i][j].y,
-                            this.pointsCtr[i][j + 1].z - this.pointsCtr[i][j].z));
-                    }
-                } else {
-                    if (this.controlsParameters.paramCoords == "chordal") {
-                        v_dist[i][j] = Math.hypot(
-                            this.pointsCtr[i][0].x - this.pointsCtr[i][j].x,
-                            this.pointsCtr[i][0].y - this.pointsCtr[i][j].y,
-                            this.pointsCtr[i][0].z - this.pointsCtr[i][j].z);
-                    }
-                    if (this.controlsParameters.paramCoords == "centripetal") {
-                        v_dist[i][j] = Math.sqrt(Math.hypot(
-                            this.pointsCtr[i][0].x - this.pointsCtr[i][j].x,
-                            this.pointsCtr[i][0].y - this.pointsCtr[i][j].y,
-                            this.pointsCtr[i][0].z - this.pointsCtr[i][j].z));
-                    }
-                }
-            }
-        }
-
-        let u_sum = new Array(n);
-        let v_sum = new Array(m);
-
-        for (i = 0; i < N_ctr - 1; i++) {
-            let s = 0;
-            for (j = 0; j < M_ctr; j++) {
-                    s += u_dist[i][j];
-            }
-            u_sum[i] = s / M_ctr;
-        }
-
-        for (j = 0; j < M_ctr; j++) {
-            let s = 0;
-            for (i = 0; i < N_ctr; i++) {
-                    s += v_dist[i][j];
-            }
-            v_sum[j] = s / N_ctr;
-        }
-        let u_all=0; 
-        let v_all=0;
-        for (i = 0; i < N_ctr - 1; i++) {
-            u_all+=u_sum[i]
-        }
-        for (j = 0; j < M_ctr; j++) {
-            v_all+=v_sum[j]
-        }
-
-        this.pointsCtr[0][0].u = 0;
-        this.pointsCtr[0][0].v = 0;
-        for (i = 0; i < N_ctr; i++)
-            this.pointsCtr[i][0].v = 0;
-        for (j = 0; j < M_ctr; j++)
-            this.pointsCtr[0][j].u = 0;
-
-        for (i = 0; i < N_ctr; i++) 
-        {
-        	for (j = 0; j < M_ctr; j++)
-        	{
-				if (this.controlsParameters.paramCoords == 'uniform') {
-                    this.pointsCtr[i][j].u = i / n;
-                    this.pointsCtr[i][j].v = j / m;
-                } else { 
-                    if(i==0) { this.pointsCtr[i][j].u = 0; }
-                    else this.pointsCtr[i][j].u =
-                        this.pointsCtr[i-1][j].u + u_sum[i-1] / u_all;
-
-                    if(j==0) { this.pointsCtr[i][j].v = 0; }
-                    else this.pointsCtr[i][j].v =
-                        this.pointsCtr[i][j-1].v + v_sum[j-1] / v_all;
-                }
-        	}
-        }
-    },
     
     calculateLineSurfaceSpline: function () {
-        let i, j;
+        const N = this.controlsParameters.N;
+        const M = this.controlsParameters.M;
 
         const N_ctr = this.N_ctr;
         const M_ctr = this.M_ctr;
-        const N = this.controlsParameters.N;
-        const M = this.controlsParameters.M;
-        const n = N_ctr - 1;
-        const m = M_ctr - 1;
 
-        this.initializeParametricCoordinates();
-        this.spline = new Spline(this.pointsCtr, this.N_ctr, this.M_ctr, '1' ? this.controlsParameters.granich : '4');
-
-        let ii = 0, jj, omega, xi, u, v;
-
-        //const du = (this.pointsCtr[n][0].u - this.pointsCtr[0][0].u) / (N - 1);
-        //const dv = (this.pointsCtr[0][m].v - this.pointsCtr[0][0].v) / (M - 1);
         const du = 1. / (N-1);
         const dv = 1. / (M-1);
 
         this.pointsSpline = new Array(N);
         this.normalsSpline = new Array(N);
-        for (i = 0; i < N; i++) {
+        for (let i = 0; i < N; i++) {
             this.pointsSpline[i] = new Array(M);
             this.normalsSpline[i] = new Array(M);
-            for (j = 0; j < M; j++)
+            for (let j = 0; j < M; j++)
                 this.normalsSpline[i][j] = new Array(3);
         }
 
-        for (i = 0; i < N; i++)
-        {
+        for (let i = 0; i < N; i++) {
             let u = i * du;
-            while ((u > this.pointsCtr[ii + 1][0].u) && (ii + 1 < n))
-                ii++;
-            let omega = (u - this.pointsCtr[ii][0].u) /
-                (this.pointsCtr[ii+1][0].u - this.pointsCtr[ii][0].u);
-
-            jj = 0;
-        	for (j = 0; j < M; j++)
-        	{
+        	for (let j = 0; j < M; j++) {
                 let v = j * dv;
-                while ((v > (jj == m ? 1 : this.pointsCtr[0][jj+1].v ) ) && (jj < m))
-                    jj++;
-                let xi = (v - this.pointsCtr[0][jj].v) /
-                    ( (jj == m ? 1 : this.pointsCtr[0][jj+1].v ) - this.pointsCtr[0][jj].v);
-
+                
                 // CALCULATE SPLINE COORDINATES
-                const [x, y, z] = this.spline.calc_value(omega, xi, ii, jj);
+                //const [x, y, z] = this.spline.calc_value(omega, xi, ii, jj);
+                
+                /*S = deCasteljau2(Pw, len(Pw[0])-1, len(Pw)-1, u, v)
+                H = 0
+                Bn = allBernstein(len(Pw[0])-1, u)
+                Bm = allBernstein(len(Pw)-1, v)
+                for r in range(0, len(Pw[0])):
+                    for s in range(0, len(Pw)):
+                        H += Bn[r]*Bm[s]*omega[s][r]
+                surfaceX.append(S.x/H)
+                surfaceY.append(S.y/H)
+                surfaceZ.append(S.z/H) */
 
+                //let S = deCasteljau2(this.pointsCtr, N_ctr-1, M_ctr-1, u, v)
+                let H = 0
+                let Bn = allBernstein(N_ctr-1, u)
+                let Bm = allBernstein(M_ctr-1, v)
+                for (let r = 0; r < N_ctr; ++r)
+                    for (let s = 0; s < M_ctr; ++s)
+                        H += Bn[r]*Bm[s]*this.pointsCtr[r][s].omega;
+                let x = 0, y = 0, z = 0;
+                for (let r = 0; r < N_ctr; ++r) {
+                    for (let s = 0; s < M_ctr; ++s) {
+                        x += Bn[r] * Bm[s] * this.pointsCtr[r][s].omega * this.pointsCtr[r][s].x;
+                        y += Bn[r] * Bm[s] * this.pointsCtr[r][s].omega * this.pointsCtr[r][s].y;
+                        z += Bn[r] * Bm[s] * this.pointsCtr[r][s].omega * this.pointsCtr[r][s].z;
+                    }
+                }
+
+                x = x/H;
+                y = y/H;
+                z = z/H;
+                
                 this.pointsSpline[i][j] = new Point(x, y, z);
 
                 //CALCULATE TANGENT VECTORS
-                const [x_u, y_u, z_u] = this.spline.calc_tangent_u(omega, xi, ii, jj);
-                const [x_v, y_v, z_v] = this.spline.calc_tangent_v(omega, xi, ii, jj);
-
-                const pt_u = vec3.fromValues(x_u, y_u, z_u);
-                const pt_v = vec3.fromValues(x_v, y_v, z_v);
+                //const [x_u, y_u, z_u] = this.spline.calc_tangent_u(omega, xi, ii, jj);
+                //const [x_v, y_v, z_v] = this.spline.calc_tangent_v(omega, xi, ii, jj);
+                //
+                //const pt_u = vec3.fromValues(x_u, y_u, z_u);
+                //const pt_v = vec3.fromValues(x_v, y_v, z_v);
 
                 //CALCULATE NORMAL VECTOR
-                const normal = vec3.create();
-                vec3.cross(normal, pt_u, pt_v)
-                vec3.normalize(normal, normal);
-
-                this.normalsSpline[i][j][0] = normal[0];
-                this.normalsSpline[i][j][1] = normal[1];
-                this.normalsSpline[i][j][2] = normal[2];
+                //const normal = vec3.create();
+                //vec3.cross(normal, pt_u, pt_v)
+                //vec3.normalize(normal, normal);
+                //
+                //this.normalsSpline[i][j][0] = normal[0];
+                //this.normalsSpline[i][j][1] = normal[1];
+                //this.normalsSpline[i][j][2] = normal[2];
         	}
         }
 
@@ -1444,8 +1333,8 @@ const Data = {
         this.create_indexes_tip("normals", N, M);
         this.verticesSpline = new Float32Array(N * M * 6);
         this.verticesNormalVector = new Float32Array(N * M * 6);
-        for (i = 0; i < N; i++)
-            for (j = 0; j < M; j++) {
+        for (let i = 0; i < N; i++)
+            for (let j = 0; j < M; j++) {
                 const offset = i * M + j;
                 this.verticesSpline[offset * 6    ] = this.pointsSpline[i][j].x;
                 this.verticesSpline[offset * 6 + 1] = this.pointsSpline[i][j].y;
