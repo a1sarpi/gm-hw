@@ -1,7 +1,7 @@
 "use strict";
 
 class CubicSplineX {
-    constructor(control_values, control_t, N_ctr, is_periodic = false) {
+    constructor(control_values, control_t, N_ctr, is_periodic = false, granich = { num: '4' }) {
         console.assert(!isNaN(control_values[0]), 'Автор неуч, control_values[0] == NaN!  ' + control_values);
         console.assert(!isNaN(control_values[N_ctr - 1]), 'Автор неуч, control_values[N_ctr - 1] == NaN!!  ' + control_values);
         if (is_periodic) {
@@ -72,26 +72,49 @@ class CubicSplineX {
             for (let i = 0; i < N_ctr; ++i)
                 matrix[i] = new Array(N_ctr);
             zeros(matrix, N_ctr, N_ctr);
+            
+            if (granich.num == '1') {
+                console.log(granich);
+                for (let i = 0; i < N_ctr; ++i) {
+                    if (i == 0) {
+                        matrix[i][0] = 2*this.h[0];
+                        matrix[i][1] = this.h[0];
 
-            for (let i = 0; i < N_ctr; ++i) {
-                if (i == 0) {
-                    matrix[i][0] = this.h[1];
-                    matrix[i][1] = - (this.h[0] + this.h[1]);
-                    matrix[i][2] = this.h[0];
+                        free[i] = 6 * ( (control_values[1] - control_values[0]) / this.h[0] - granich.p0_prime );
+                    } else if (i == N_ctr - 1) {
+                        matrix[i][N_ctr - 2] = this.h[N_ctr - 2];
+                        matrix[i][N_ctr - 1] = 2*this.h[N_ctr - 3];
 
-                    free[i] = 0;
-                } else if (i == N_ctr - 1) {
-                    matrix[i][N_ctr - 3] = this.h[N_ctr - 2];
-                    matrix[i][N_ctr - 2] = - ( this.h[N_ctr - 3] + this.h[N_ctr - 2] );
-                    matrix[i][N_ctr - 1] = this.h[N_ctr - 3];
+                        free[i] = 6 * ( granich.p1_prime - (control_values[N_ctr-1] - control_values[N_ctr-2]) / this.h[N_ctr - 2] );
+                    } else {
+                        matrix[i][i - 1] = this.h[i - 1];
+                        matrix[i][i] = 2 * (this.h[i - 1] + this.h[i]);
+                        matrix[i][i + 1] = this.h[i];
 
-                    free[i] = 0;
-                } else {
-                    matrix[i][i - 1] = this.h[i - 1];
-                    matrix[i][i] = 2 * (this.h[i - 1] + this.h[i]);
-                    matrix[i][i + 1] = this.h[i];
+                        free[i] = 6 * this.delta[i - 1];
+                    }
+                }
+            } else {
+                for (let i = 0; i < N_ctr; ++i) {
+                    if (i == 0) {
+                        matrix[i][0] = this.h[1];
+                        matrix[i][1] = - (this.h[0] + this.h[1]);
+                        matrix[i][2] = this.h[0];
 
-                    free[i] = 6 * this.delta[i - 1];
+                        free[i] = 0;
+                    } else if (i == N_ctr - 1) {
+                        matrix[i][N_ctr - 3] = this.h[N_ctr - 2];
+                        matrix[i][N_ctr - 2] = - ( this.h[N_ctr - 3] + this.h[N_ctr - 2] );
+                        matrix[i][N_ctr - 1] = this.h[N_ctr - 3];
+
+                        free[i] = 0;
+                    } else {
+                        matrix[i][i - 1] = this.h[i - 1];
+                        matrix[i][i] = 2 * (this.h[i - 1] + this.h[i]);
+                        matrix[i][i + 1] = this.h[i];
+
+                        free[i] = 6 * this.delta[i - 1];
+                    }
                 }
             }
 
@@ -141,7 +164,7 @@ class CubicSplineX {
 
 
 class BicubicSplineX {
-    constructor(control_values, control_u, control_v, N_ctr, M_ctr, derivative) {
+    constructor(control_values, control_u, control_v, N_ctr, M_ctr, granich = { num: '4'}) {
         this.N_ctr = N_ctr;
         this.M_ctr = M_ctr;
 
@@ -157,7 +180,7 @@ class BicubicSplineX {
                 tmp_control_values[i] = control_values[i][j];
                 tmp_control_u[i] = control_u[i][j];
             }
-            this.u_splines[j] = new CubicSplineX(tmp_control_values, tmp_control_u, N_ctr);
+            this.u_splines[j] = new CubicSplineX(tmp_control_values, tmp_control_u, N_ctr, false, granich);
         }
 
 
@@ -253,7 +276,7 @@ class BicubicSplineX {
 }
 
 class Spline {
-    constructor(control_points, N_ctr, M_ctr) {
+    constructor(control_points, N_ctr, M_ctr, granich = '4') {
         let control_values_x = new Array(N_ctr),
             control_values_y = new Array(N_ctr),
             control_values_z = new Array(N_ctr),
@@ -274,11 +297,13 @@ class Spline {
             }
         }
         console.log("Строим сплайн x(u, v):");
-        this.x_spline = new BicubicSplineX(control_values_x, control_values_u, control_values_v, N_ctr, M_ctr, 1);
+        this.x_spline = new BicubicSplineX(control_values_x, control_values_u, control_values_v, N_ctr, M_ctr, { num: granich,
+            p0_prime: (control_values_x[N_ctr - 1][0] - control_values_x[0][0]),
+            p1_prime: (control_values_x[N_ctr - 1][0] - control_values_x[0][0]) });
         console.log("Строим сплайн y(u, v):");
-        this.y_spline = new BicubicSplineX(control_values_y, control_values_u, control_values_v, N_ctr, M_ctr, 0);
+        this.y_spline = new BicubicSplineX(control_values_y, control_values_u, control_values_v, N_ctr, M_ctr, { num: granich, p0_prime: 0, p1_prime: 0 });
         console.log("Строим сплайн z(u, v):");
-        this.z_spline = new BicubicSplineX(control_values_z, control_values_u, control_values_v, N_ctr, M_ctr, 0);
+        this.z_spline = new BicubicSplineX(control_values_z, control_values_u, control_values_v, N_ctr, M_ctr, { num: granich, p0_prime: 0, p1_prime: 0 });
     }
 
     calc_value(omega, xi, ii, jj) {
